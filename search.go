@@ -47,7 +47,13 @@ func parseBody(rc io.ReadCloser) []Result {
 	res := []Result{}
 	doc, _ := goquery.NewDocumentFromReader(rc)
 
-	doc.Find("div#center_col").Find("div.g").Each(func(i int, sel *goquery.Selection) {
+	doc.Find("div#search").Find("div.g").Each(func(i int, sel *goquery.Selection) {
+		classes, _ := sel.Attr("class")
+		// skip google translate/weather/stock/currency from search results
+		if classes != "g" {
+			return
+		}
+
 		link, _ := sel.Find("div.r").Find("a").Attr("href")
 		title := sel.Find("div.r").Find("h3").Text()
 		words := sel.Find("div.s").Find("span.st").Text()
