@@ -10,10 +10,10 @@ import (
 	"testing"
 )
 
-type transport func(*http.Request) (*http.Response, error)
+type roundTripper func(*http.Request) (*http.Response, error)
 
-func (t transport) RoundTrip(r *http.Request) (*http.Response, error) {
-	return t(r)
+func (f roundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
 }
 
 func TestClient_Search(t *testing.T) {
@@ -23,14 +23,14 @@ func TestClient_Search(t *testing.T) {
 			t.Fatalf(err.Error())
 		}
 
-		var mockT transport = func(*http.Request) (*http.Response, error) {
-			return &http.Response{
-				Body:       ioutil.NopCloser(file),
-				StatusCode: http.StatusInternalServerError,
-			}, nil
-		}
-
-		c := NewClient(WithHTTPClient(&http.Client{Transport: mockT}))
+		c := NewClient(WithHTTPClient(&http.Client{
+			Transport: roundTripper(func(*http.Request) (*http.Response, error) {
+				return &http.Response{
+					Body:       ioutil.NopCloser(file),
+					StatusCode: http.StatusInternalServerError,
+				}, nil
+			}),
+		}))
 
 		gotResults, err := c.Search(&url.Values{})
 		if err != nil {
@@ -67,11 +67,12 @@ func TestClient_Search(t *testing.T) {
 	})
 
 	t.Run("HTTPRequestError", func(t *testing.T) {
-		var mockT transport = func(*http.Request) (*http.Response, error) {
-			return &http.Response{}, errors.New("mock error")
-		}
 
-		c := NewClient(WithHTTPClient(&http.Client{Transport: mockT}))
+		c := NewClient(WithHTTPClient(&http.Client{
+			Transport: roundTripper(func(*http.Request) (*http.Response, error) {
+				return &http.Response{}, errors.New("mock error")
+			}),
+		}))
 
 		_, err := c.Search(&url.Values{})
 
